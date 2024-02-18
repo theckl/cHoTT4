@@ -5,11 +5,11 @@ namespace hott
 
 /- Path equality: delivers a type, not a Prop/Sort 0 -/
 
-inductive eq {A : Type u} (a : A) : A → Type u
-| refl : eq a a
+inductive Eq {A : Type u} (a : A) : A → Type u
+| refl : Eq a a
 
-local infix:55 " = " => hott.eq
+infix:55 (priority := high) " = " => Eq
 
-@[reducible] def rfl {A : Type u} {a : A} := @eq.refl _ a
+@[reducible] def rfl {A : Type u} {a : A} := @Eq.refl _ a
 
 end hott
