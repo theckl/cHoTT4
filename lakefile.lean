@@ -9,7 +9,6 @@ lean_lib CHoTT4 {
   -- add library configuration options here
 }
 
-@[defaultTarget]
 lean_exe cHoTT4 {
   root := `Main
 }
