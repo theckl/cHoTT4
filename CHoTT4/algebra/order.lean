@@ -3,16 +3,16 @@ universe u
 
 namespace hott
 
-namespace algebra
+namespace Algebra
 
 /- orders -/
 
-class has_le (α : Type u) := (le : α → α → Type u)
-class has_lt (α : Type u) := (lt : α → α → Type u)
+class hasLe (α : Type u) := (le : α → α → Type u)
+class hasLt (α : Type u) := (lt : α → α → Type u)
 
-infix:55 " ≤ "  => has_le.le
-infix:55 " < "  => has_lt.lt
+infix:55 " ≤ "  => hasLe.le
+infix:55 " < "  => hasLt.lt
 
-end algebra
+end Algebra
 
 end hott
