@@ -1,14 +1,15 @@
-init
-  path0       15
-  path        26
-  logic       33
+Init
+  Path0       15
+  Path        32
+  Logic       33
+  Trunc       59
             ----
-              74
-algebra
-  order       18
+             139
+Algebra
+  Order       18
 
-cubes
-  direction  211  
+Cubes
+  Direction  261  
 
             ----
-             303
+             418
