@@ -1,11 +1,11 @@
-import CHoTT4.init.logic
-import CHoTT4.algebra.order
+import CHoTT4.Init.Logic
+import CHoTT4.Algebra.Order
 
 universe u
 
 namespace hott
 
-namespace dir
+namespace Dir
 
 /- Directions -/
 inductive Dir : Type
@@ -38,14 +38,14 @@ def Dir_has_DecidableEq : DecidableEq Dir
 | Dir.next _, Dir.pt     => Decidable.isFalse (fun p => encodeDir p)
 | Dir.next i, Dir.next j =>
     match Dir_has_DecidableEq i j with
-    | Decidable.isTrue p   => Decidable.isTrue (ap Dir.next p)
-    | Decidable.isFalse np => Decidable.isFalse (fun p => np (ap Dir.prev p))
+    | Decidable.isTrue p   => Decidable.isTrue (Ap Dir.next p)
+    | Decidable.isFalse np => Decidable.isFalse (fun p => np (Ap Dir.prev p))
 
 def next_ne_pt : ∀ (i : Dir), ¬(Dir.next i = Dir.pt) :=
   fun _ => encodeDir
 
-open algebra
 
+open Algebra
 
 /- order of directions -/
 inductive le (i : Dir) : Dir → Type
@@ -53,12 +53,12 @@ inductive le (i : Dir) : Dir → Type
 | step : {j : Dir} -> le i j -> le i (Dir.next j)
 
 @[instance]
-def Dir_has_le : has_le Dir := has_le.mk le
+def Dir_hasLe : hasLe Dir := hasLe.mk le
 
 def lt (i j : Dir) := le (Dir.next i) j
 
 @[instance]
-def Dir_has_lt : has_lt Dir := has_lt.mk lt
+def Dir_hasLt : hasLt Dir := hasLt.mk lt
 
 /- minimality of `pt` -/
 def pt_is_min : ∀ i : Dir, Dir.pt ≤ i
@@ -107,6 +107,13 @@ def not_next_le_self : (i : Dir) -> ¬(Dir.next i ≤ i)
 
 def lt_irrefl (i : Dir) : ¬(i < i) := not_next_le_self i
 
+/- Inequalities of directions are propositions. -/
+def le_isProp : {i j : Dir} -> (p q : i ≤ j) ->  p = q
+  | _, _, le.refl, le.refl  => rfl
+  | _, _, le.refl, (@le.step _ _ q') => Empty.elim (not_next_le_self _ q')
+  | _, _, (@le.step _ _ p'), le.refl => Empty.elim (not_next_le_self _ p')
+  | _, _, (@le.step _ _ p'), (@le.step _ _ q') => Ap le.step (le_isProp p' q')
+
 /- anti-symmetry of `≤` -/
 def le_antisymm {i j : Dir} : i ≤ j -> j ≤ i -> i = j
 | le.refl  => fun _ => IdP
@@ -123,7 +130,7 @@ def le_total : ∀ (i j : Dir), i ≤ j ⊕ j < i
 
 def le_total_l {i j : Dir} (p : i < j) : le_total i j = Sum.inl (lt_le p) :=
   match le_total i j with
-  | Sum.inl q => sorry
+  | Sum.inl q => Ap Sum.inl (le_isProp _ _)
   | Sum.inr q => sorry
 
 def le_total_r {i j : Dir} (p : j < i) : le_total i j = Sum.inr p :=
@@ -237,7 +244,7 @@ def extend {i : Dir} :
     apply @DirSet.ext _ DirSet.noDir (Max Dir.pt j)
     exact le_trans (le_ne_lt (pt_is_min j) (ni_ne_pt nel)⁻¹) (Max_r _ j)
 | DirSet.ext I j' => fun j nel => match ne_lt_or_gt (ni_ext_ne nel) with
-                                  | Sum.inl p => DirSet.ext (DirSet.ext I j') j
+                                  | Sum.inl p => sorry --DirSet.ext (DirSet.ext I j') j
                                   | Sum.inr p => sorry
 
 /- union of direction sets -/
@@ -249,6 +256,6 @@ def Union {i j : Dir} : DirSet i -> DirSet j -> DirSet (Max i j)
     @DirSet.ext _ I  (Max i' Dir.pt) (le_trans p (Max_l _ _))
 | @DirSet.ext _ I i' p, @DirSet.ext _ J j' q => sorry
 
-end dir
+end Dir
 
 end hott
