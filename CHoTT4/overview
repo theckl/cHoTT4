@@ -2,14 +2,14 @@ Init
   Path0       15
   Path        32
   Logic       33
-  Trunc       59
+  Trunc      112
             ----
-             139
+             192
 Algebra
   Order       18
 
 Cubes
-  Direction  261  
+  Direction  266  
 
             ----
-             418
+             476
