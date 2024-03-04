@@ -1,4 +1,4 @@
-import CHoTT4.init.Path
+import CHoTT4.Init.Path
 
 universe u
 
