@@ -18,6 +18,14 @@ def Eq.concat {A : Type u} {a b c : A} : a = b -> b = c -> a = c
 
 infix:75 " ⬝ " => Eq.concat
 
+-- The right inverse law.
+def con.right_inv {A : Type u} {x y : A} : (p : x = y) -> p ⬝ p⁻¹ = IdP
+  | Eq.refl => Eq.refl
+
+-- The left inverse law.
+def con.left_inv {A : Type u} {x y : A} : (p : x = y) -> p⁻¹ ⬝ p = IdP
+  | Eq.refl => Eq.refl
+
 def Transport {P : A → Type v} {x y : A} : (x = y) -> (P x) -> P y
 | Eq.refl => fun u => u
 
