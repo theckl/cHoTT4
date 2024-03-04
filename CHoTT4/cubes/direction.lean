@@ -1,9 +1,12 @@
 import CHoTT4.Init.Logic
 import CHoTT4.Algebra.Order
+import CHoTT4.Init.Trunc
 
 universe u
 
 namespace hott
+
+open isTrunc
 
 namespace Dir
 
@@ -91,6 +94,10 @@ def next_le_next {i j : Dir} : (i ≤ j) -> Dir.next i ≤ Dir.next j
 | le.refl => le.refl
 | le.step p => le.step (next_le_next p)
 
+/- transitivity of `<` -/
+def lt_trans {i j k : Dir} (p : i < j) (q : j < k) : i < k :=
+  le_trans p (le_trans (le_next _) q)
+
 def pt_lt_next (i : Dir) : Dir.pt < Dir.next i := next_le_next (pt_is_min i)
 
 def pred_le_pred {i j : Dir} : Dir.next i ≤ Dir.next j -> (i ≤ j)
@@ -108,11 +115,14 @@ def not_next_le_self : (i : Dir) -> ¬(Dir.next i ≤ i)
 def lt_irrefl (i : Dir) : ¬(i < i) := not_next_le_self i
 
 /- Inequalities of directions are propositions. -/
-def le_isProp : {i j : Dir} -> (p q : i ≤ j) ->  p = q
+def le_Eq : {i j : Dir} -> (p q : i ≤ j) ->  p = q
   | _, _, le.refl, le.refl  => rfl
   | _, _, le.refl, (@le.step _ _ q') => Empty.elim (not_next_le_self _ q')
   | _, _, (@le.step _ _ p'), le.refl => Empty.elim (not_next_le_self _ p')
-  | _, _, (@le.step _ _ p'), (@le.step _ _ q') => Ap le.step (le_isProp p' q')
+  | _, _, (@le.step _ _ p'), (@le.step _ _ q') => Ap le.step (le_Eq p' q')
+
+@[instance]
+def le_isProp {i j : Dir} : isProp (i ≤ j) := isProp.mk le_Eq
 
 /- anti-symmetry of `≤` -/
 def le_antisymm {i j : Dir} : i ≤ j -> j ≤ i -> i = j
@@ -128,15 +138,15 @@ def le_total : ∀ (i j : Dir), i ≤ j ⊕ j < i
                             | Sum.inl p => Sum.inl (next_le_next p)
                             | Sum.inr p => Sum.inr (next_le_next p)
 
-def le_total_l {i j : Dir} (p : i < j) : le_total i j = Sum.inl (lt_le p) :=
+def le_total_l {i j : Dir} (p : i ≤ j) : le_total i j = Sum.inl p :=
   match le_total i j with
-  | Sum.inl q => Ap Sum.inl (le_isProp _ _)
-  | Sum.inr q => sorry
+  | Sum.inl _ => Ap Sum.inl (le_Eq _ _)
+  | Sum.inr q => Empty.elim (not_next_le_self j (le_trans q p))
 
 def le_total_r {i j : Dir} (p : j < i) : le_total i j = Sum.inr p :=
   match le_total i j with
-  | Sum.inl q => sorry
-  | Sum.inr q => sorry
+  | Sum.inl q => Empty.elim (not_next_le_self j (le_trans p q))
+  | Sum.inr _ => Ap Sum.inr (le_Eq _ _)
 
 def lt_ne : ∀ {i j : Dir}, i < j -> i ≠ j :=
   fun p q => match q with | Eq.refl => lt_irrefl _ p
@@ -163,21 +173,16 @@ where
   | Sum.inl _ => j
   | Sum.inr _ => i
 
-def le_Max (i j : Dir) : i ≤ j -> j = Max i j := by
-  /-match le_total i j with
-  | Sum.inl q => sorry
-  | Sum.inr q => sorry
-  fun p => le_leMax p
-    where le_leMax {i j : Dir} : (p : i ≤ j) -> j = Max.leMax i j (Sum.inl p) := by
-            intro p
-            exact rfl -/
-  intro p
-  apply @Eq.concat _ _ (Max.leMax i j (Sum.inl p)) _
-    rfl
-    sorry
+def le_Max {i j : Dir} : i ≤ j -> Max i j = j :=
+  fun p => @Eq.concat _ (Max.leMax i j (le_total i j)) (Max.leMax i j (Sum.inl p)) _
+                      (Ap (Max.leMax i j) (le_total_l p)) rfl
 
-def Max_l (i j : Dir) : i ≤ Max i j := by
-  exact leMax_l i j
+def gt_Max {i j : Dir} : j < i -> Max i j = i :=
+  fun p => @Eq.concat _ (Max.leMax i j (le_total i j)) (Max.leMax i j (Sum.inr p)) _
+                      (Ap (Max.leMax i j) (le_total_r p)) rfl
+
+def Max_l (i j : Dir) : i ≤ Max i j :=
+  leMax_l i j
 where
   leMax_l (i j : Dir) : i ≤ Max.leMax i j (le_total i j) :=
     match (le_total i j) with
@@ -191,6 +196,11 @@ where
     match (le_total i j) with
       | Sum.inl _ => le.refl
       | Sum.inr q => lt_le q
+
+def lt_lt_Max_lt {i j k : Dir} : i < k -> j < k -> Max i j < k :=
+  match (le_total i j) with
+  | Sum.inl r => fun _ q => (le_Max r)⁻¹ ▸[fun i => i < k] q
+  | Sum.inr r => fun p _ => (gt_Max r)⁻¹ ▸[fun i => i < k] p
 
 
 /- Direction sets: an inductive family, to record the maximal element. -/
@@ -237,15 +247,19 @@ def SetMin {i : Dir} : (I : DirSet i) -> Dir
 def Next {i : Dir} : (I : DirSet i) -> Dir :=
   fun _ => Dir.next i
 
-/- Extending a direction set by one direction -/
+/- Extending a direction set by one new direction -/
 def extend {i : Dir} :
-  (I : DirSet i) -> (j : Dir) -> {nel : j ∉ I} -> DirSet (Max i j)
+  (I : DirSet i) -> (j : Dir) -> {_ : j ∉ I} -> DirSet (Max i j)
 | DirSet.noDir => fun j nel => by
     apply @DirSet.ext _ DirSet.noDir (Max Dir.pt j)
     exact le_trans (le_ne_lt (pt_is_min j) (ni_ne_pt nel)⁻¹) (Max_r _ j)
-| DirSet.ext I j' => fun j nel => match ne_lt_or_gt (ni_ext_ne nel) with
-                                  | Sum.inl p => sorry --DirSet.ext (DirSet.ext I j') j
-                                  | Sum.inr p => sorry
+| @DirSet.ext _ I j' q =>
+    fun j nel => match ne_lt_or_gt (ni_ext_ne nel) with
+                 | Sum.inl p => (le_Max (lt_le p))⁻¹ ▸[fun i => DirSet i]
+                                @DirSet.ext _ (@DirSet.ext _ I j' q) j p
+                 | Sum.inr p => (gt_Max p)⁻¹ ▸[fun i => DirSet i]
+                                @DirSet.ext _ (@extend _ I j (ni_ext_ni nel)) j'
+                                            (lt_lt_Max_lt q p)
 
 /- union of direction sets -/
 def Union {i j : Dir} : DirSet i -> DirSet j -> DirSet (Max i j)
@@ -254,7 +268,14 @@ def Union {i j : Dir} : DirSet i -> DirSet j -> DirSet (Max i j)
     @DirSet.ext _ J (Max Dir.pt j') (le_trans q (Max_r _ _))
 | @DirSet.ext _ I i' p, DirSet.noDir         =>
     @DirSet.ext _ I  (Max i' Dir.pt) (le_trans p (Max_l _ _))
-| @DirSet.ext _ I i' p, @DirSet.ext _ J j' q => sorry
+| @DirSet.ext i I i' p, @DirSet.ext j J j' q =>
+  match le_total i' j' with
+  | Sum.inl r =>
+    match le_lt_or_eq r with
+    | Sum.inl r => (le_Max (lt_le r))⁻¹ ▸[fun i => DirSet i]
+                   DirSet.ext (DirSet.ext (Union I J) i') j'
+    | Sum.inr r => sorry
+  | Sum.inr r => sorry
 
 end Dir
 
