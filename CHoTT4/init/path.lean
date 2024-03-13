@@ -1,5 +1,5 @@
 /- Ported from HoTT3 -/
-import CHoTT4.init.Path0
+import CHoTT4.Init.Path0
 
 universe u v
 
@@ -36,5 +36,7 @@ def Ap {A : Type u} {B : Type v} (f : A → B) {x y : A} :
   (p : x = y) -> f x = f y
 | Eq.refl => IdP
 
+def Ap011  (f : A → B → C) : a = a' -> b = b' -> f a b = f a' b'
+| Eq.refl, Eq.refl => rfl
 
 end hott
