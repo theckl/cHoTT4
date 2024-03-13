@@ -1,15 +1,16 @@
 Init
   Path0       15
-  Path        32
+  Path        42
+  Pathover    27
   Logic       33
   Trunc      112
             ----
-             192
+             229
 Algebra
   Order       18
 
 Cubes
-  Direction  266  
-
+  Direction  457  
+  deMorgan    23
             ----
-             476
+             727
