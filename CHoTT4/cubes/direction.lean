@@ -1,6 +1,8 @@
+import CHoTT4.Init.Pathover
 import CHoTT4.Init.Logic
 import CHoTT4.Algebra.Order
 import CHoTT4.Init.Trunc
+
 
 universe u
 
@@ -207,6 +209,10 @@ def lt_lt_Max_lt {i j k : Dir} : i < k -> j < k -> Max i j < k :=
   | Sum.inl r => fun _ q => (le_Max r)⁻¹ ▸[fun i => i < k] q
   | Sum.inr r => fun p _ => (gt_Max r)⁻¹ ▸[fun i => i < k] p
 
+end Dir
+
+open Dir
+namespace DirSet
 
 /- Direction sets: lists ordered by the order on `Dir`. -/
 @[reducible]
@@ -214,21 +220,56 @@ def head : List Dir -> Dir
 | []        => Dir.pt
 | (hd :: _) => hd
 
+def tail : List Dir -> List Dir
+| []        => []
+| (_ :: tl) => tl
+
 inductive is_ordered : List Dir -> Type
 | nil   : is_ordered []
 | cons : (hd : Dir) -> (tl : List Dir) -> is_ordered tl -> head tl < hd ->
          is_ordered (hd::tl)
 
+/- `is_ordered` is a proposition. -/
+def is_ord_Eq : {I : List Dir} -> (ord₁ ord₂ : is_ordered I) -> ord₁ = ord₂
+| [], is_ordered.nil, is_ordered.nil => rfl
+| List.cons _ _, is_ordered.cons _ _ ord₁ _, is_ordered.cons _ _ ord₂ _ =>
+    Ap011 (is_ordered.cons _ _) (is_ord_Eq ord₁ ord₂) (le_Eq _ _)
+
+@[instance]
+def is_ord_isProp {I : List Dir} : isProp (is_ordered I) := isProp.mk is_ord_Eq
+
 structure DirSet where
   list : List Dir
   ord  : is_ordered list
 
+@[reducible, match_pattern]
 def noDirSet : DirSet := {list := [], ord := is_ordered.nil}
 
-@[reducible]
+@[reducible, match_pattern]
 def DirSet.ext (j : Dir) (tl : List Dir) (ord : is_ordered tl) (p : head tl < j) :
   DirSet :=
 {list := j :: tl, ord := is_ordered.cons j tl ord p}
+
+/- Equalities in `DirSet` are reducible to equalities of lists and therefore decidable. -/
+def ListToDirSetEq : {I J : DirSet} -> I.list = J.list -> I = J
+| {list := _, ord := _}, {list := _, ord := _} =>
+    fun p => ApD011 _ p (PathoverOfTrEq p (isProp.elim _ _))
+
+def List.Code : List Dir -> List Dir -> Type
+| []    , []     => Unit
+| []    , _ :: _ => Empty
+| _ :: _, []     => Empty
+| i :: I, j :: J => (i = j) × (List.Code I J)
+
+def List.RCode : (I : List Dir) -> List.Code I I
+| []     => Unit.unit
+| _ :: I => ⟨rfl, List.RCode I⟩
+
+def List.Encode {I J : List Dir} : (I = J) -> List.Code I J
+| Eq.refl => List.RCode I
+
+def List.nil_ne_cons {i : Dir} {I : List Dir} : ¬([] = i :: I) :=
+  List.Encode
 
 /- element relation of direction sets -/
 inductive is_in : (j : Dir) -> (I : DirSet) -> Type
@@ -346,6 +387,76 @@ def subtract (j : Dir) : (I : DirSet) -> DirSet
   | Decidable.isTrue _ => {list := I, ord := ord}
   | Decidable.isFalse _ => extend i (subtract j {list := I, ord := ord})
 
-end Dir
+/- subset relation on direction sets -/
+inductive isSubset : DirSet -> DirSet -> Type
+| noDir : (J : DirSet) -> isSubset noDirSet J
+| ext   : {i : Dir} -> {I : DirSet} -> (p : head I.list < i) -> {J : DirSet} ->
+                  (isSubset I J) -> (i ∈ J) -> isSubset (DirSet.ext i I.list I.ord p) J
+
+infix:55 " ⊆ "  => isSubset
+notation:55 I:55 " ⊈ " J:55 => ¬(I ⊆ J)
+
+def SubsetRefl : (I : DirSet) -> I ⊆ I
+| {list := [], ord := is_ordered.nil} => isSubset.noDir noDirSet
+| {list := hd::tl, ord := is_ordered.cons _ _ ord _} => sorry
+    --isSubset.ext _ (SubsetRefl {list := tl, ord := ord})
+
+/- disjoint direction sets -/
+inductive disjointDirSets (I : DirSet) : (J : DirSet) -> Type
+| disj : {j : Dir} -> {J : DirSet} -> (p : head J.list < j) -> (disjointDirSets I J) ->
+         j ∉ I -> disjointDirSets I (DirSet.ext j J.list J.ord p)
+
+open Algebra
+
+/- lexicographic order on direction sets -/
+inductive lexLt : DirSet -> DirSet -> Type
+| min  : (I : DirSet) -> {i : Dir} -> (p : head I.list < i) ->
+                                        lexLt noDirSet (DirSet.ext i I.list I.ord p)
+| ext  : {I : DirSet} -> {i i': Dir} -> (p : head I.list < i) -> (p' : head I.list < i') ->
+           (i < i') -> lexLt (DirSet.ext i I.list I.ord p) (DirSet.ext i' I.list I.ord p')
+| prev : {i j : Dir} -> {I J : DirSet} -> (p : head I.list < i) -> (q : head J.list < j) ->
+           (r : lexLt I J) ->
+           lexLt (DirSet.ext i I.list I.ord p) (DirSet.ext j J.list J.ord q)
+
+@[instance]
+def DirSet_hasLt : hasLt DirSet := hasLt.mk lexLt
+
+/- `lexLt` is a total order. -/
+def total_lexLt : (I J : DirSet) -> (I < J ⊕ I = J) ⊕ J < I
+| {list := [], ord := is_ordered.nil}, {list := [], ord := is_ordered.nil} =>
+    Sum.inl (Sum.inr rfl)
+| {list := [], ord := is_ordered.nil}, {list := j::J, ord := is_ordered.cons _ _ _ _} =>
+    Sum.inl (Sum.inl (lexLt.min {list := J, ord := _} _))
+| {list := _::I, ord := is_ordered.cons _ _ _ _}, {list := [], ord := is_ordered.nil} =>
+    Sum.inr (lexLt.min {list := I, ord := _} _)
+| {list := i::I, ord := is_ordered.cons _ _ ordI sI},
+                                   {list := j::J, ord := is_ordered.cons _ _ ordJ sJ} =>
+    match total_lexLt {list := I, ord := ordI} {list := J, ord := ordJ} with
+    | Sum.inl p => match p with
+      | Sum.inl p => Sum.inl (Sum.inl (lexLt.prev _ _ p))
+      | Sum.inr q => match le_total i j with
+        | Sum.inl r => match le_lt_or_eq r with
+          | Sum.inl s => by apply fun p => Sum.inl (Sum.inl p)
+                            apply fun p => @Transport _ (fun l : DirSet => _ < l) _ _ p
+                                             (@lexLt.ext {list := I, ord := ordI} _ _ sI
+                                                  (q⁻¹ ▸[fun l => head l.list < j] sJ) s)
+                            exact ListToDirSetEq (Ap (List.cons j) (Ap DirSet.list q))
+          | Sum.inr t =>
+              Sum.inl (Sum.inr (ListToDirSetEq (Ap011 List.cons t (Ap DirSet.list q))))
+        | Sum.inr s => by apply Sum.inr
+                          apply fun p => @Transport _ (fun l : DirSet => _ < l) _ _ p
+                                             (@lexLt.ext {list := J, ord := ordJ} _ _ sJ
+                                                  (q ▸[fun l => head l.list < i] sI) s)
+                          exact ListToDirSetEq (Ap (List.cons i) (Ap DirSet.list q)⁻¹)
+    | Sum.inr r => Sum.inr (lexLt.prev _ _ r)
+
+def lexLt_neq : {I J : DirSet} -> I < J -> I ≠ J
+| noDirSet, DirSet.ext _ _ _ _, _ => fun p => List.nil_ne_cons (Ap DirSet.list p)
+| DirSet.ext _ _ _ _, DirSet.ext _ _ _ _, @lexLt.ext _ _ _ _ _ q => fun p =>
+    lt_ne q (Ap head (Ap DirSet.list p))
+| DirSet.ext _ _ _ _, DirSet.ext _ _ _ _, lexLt.prev p q r => fun p =>
+    lexLt_neq r (ListToDirSetEq (Ap tail (Ap DirSet.list p)))
+
+end DirSet
 
 end hott
