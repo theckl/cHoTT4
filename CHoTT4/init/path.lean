@@ -26,17 +26,23 @@ def con.right_inv {A : Type u} {x y : A} : (p : x = y) -> p ⬝ p⁻¹ = IdP
 def con.left_inv {A : Type u} {x y : A} : (p : x = y) -> p⁻¹ ⬝ p = IdP
   | Eq.refl => Eq.refl
 
+-- Transport
 def Transport {P : A → Type v} {x y : A} : (x = y) -> (P x) -> P y
 | Eq.refl => fun u => u
 
 notation:65 q:65 " ▸ " u => Transport q u
 notation:65 q:65 " ▸[" P:65 "] " u => @Transport _ P _ _ q u
 
+-- Applications of functions on equalities
 def Ap {A : Type u} {B : Type v} (f : A → B) {x y : A} :
   (p : x = y) -> f x = f y
 | Eq.refl => IdP
 
 def Ap011  (f : A → B → C) : a = a' -> b = b' -> f a b = f a' b'
 | Eq.refl, Eq.refl => rfl
+
+-- Equalities of pairs
+def eqPair {A B : Type _} : {p₁ p₂ : A × B} -> p₁.1 = p₂.1 -> p₁.2 = p₂.2 -> p₁ = p₂
+  | ⟨_, _⟩, ⟨_, _⟩ => fun q r => Ap011 Prod.mk q r
 
 end hott
