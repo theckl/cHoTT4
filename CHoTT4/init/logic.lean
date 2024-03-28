@@ -30,4 +30,7 @@ class inductive Decidable (P : Type u) : Type u
 abbrev DecidableEq (A : Type _) :=
   (a b : A) -> Decidable (a = b)
 
+abbrev DecidableRel {A : Type _} (R : A -> A -> Type _) :=
+  (a b : A) -> Decidable (R a b)
+
 end hott
