@@ -66,6 +66,7 @@ fun ih l => match l with
 
 /- merge two lists such that two list ordered by a relation yield an ordered list
    containing the elements of both list. -/
+@[match_pattern, reducible]
 def merge {A : Type _} (R : A -> A -> Type _) [decR : DecidableRel R] :
   List A -> List A -> List A
 | []    , m      => m
@@ -73,6 +74,13 @@ def merge {A : Type _} (R : A -> A -> Type _) [decR : DecidableRel R] :
 | a :: l, b :: m => match decR a b with
                     | Decidable.isTrue _  => a :: merge R l (b :: m)
                     | Decidable.isFalse _ => b :: merge R (a :: l) m
+
+def merge_r {A : Type _} (R : A -> A -> Type _) [decR : DecidableRel R] (m : List A) :
+  merge R [] m = m := sorry --rfl --Ap (List.cons b) (merge_r R m)
+
+def add_eq : n + 0 = n := rfl
+
+--def merge_nat : merge Nat.Le [] [1] = [1] := rfl
 
 /- mergesort : well-founded inductive construction and actual sorting algorithm -/
 def mergeSortWF {A : Type _} (R : A -> A -> Type _) [DecidableRel R] :
