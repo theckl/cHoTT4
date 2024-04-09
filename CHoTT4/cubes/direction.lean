@@ -435,6 +435,25 @@ def restrSubset {I J : DirSet} {j : Dir} {p : head J.list < j} :
 | isSubset.ext q ss el => fun r => isSubset.ext q (restrSubset ss (lt_trans q r))
                                                   (in_prev_in el r)
 
+def SubsetRestr {I J : DirSet} {i : Dir} {p : head I.list < i} :
+  DirSet.ext i I p ⊆ J -> I ⊆ J
+| isSubset.ext q ss el => ss
+
+def isSubset_or_not : (I J : DirSet) -> (I ⊆ J) ⊕ (I ⊈ J)
+| noDirSet, J                             => Sum.inl (isSubset.min J)
+| DirSet.ext i {list := I, ord := ordI} p, J => match is_in_isDec i J with
+  | Decidable.isTrue el   => match isSubset_or_not {list := I, ord := ordI} J with
+    | Sum.inl ss  => Sum.inl (isSubset.ext p ss el)
+    | Sum.inr nss => Sum.inr (fun ss => nss (SubsetRestr ss))
+  | Decidable.isFalse nel =>
+      Sum.inr (fun ss => Empty.elim (nel (isSubset_ElemImp ss i (is_in.max p))))
+
+@[instance]
+def isSubset_Dec : DecidableRel isSubset :=
+  fun I J => match isSubset_or_not I J with
+  | Sum.inl ss  => Decidable.isTrue ss
+  | Sum.inr nss => Decidable.isFalse nss
+
 
 /- disjoint direction sets -/
 inductive disjointDirSets (I : DirSet) : (J : DirSet) -> Type
@@ -552,6 +571,21 @@ def isSubset_lePair {I J : DirSetPair} : I ⊆ J -> (I < J ⊕ I = J)
   | Sum.inr p => match isSubset_lexLe i₂ with
     | Sum.inl q => Sum.inl (ltPair.second p q)
     | Sum.inr q => Sum.inr (eqPair p q)
+
+def isSubsetPair_or_not (I J : DirSetPair) : (I ⊆ J) ⊕ (I ⊈ J) :=
+match isSubset_or_not I.1 J.1 with
+  | Sum.inl ss₁  => match isSubset_or_not I.2 J.2 with
+    | Sum.inl ss₂  => Sum.inl (isSubsetPair.comp_ss ss₁ ss₂)
+    | Sum.inr nss₂ => Sum.inr (fun ss => match ss with
+                                         | isSubsetPair.comp_ss _ ss₂ => nss₂ ss₂)
+  | Sum.inr nss₁ => Sum.inr (fun ss => match ss with
+                                       | isSubsetPair.comp_ss ss₁ _ => nss₁ ss₁)
+
+@[instance]
+def isSubsetPair_Dec : DecidableRel isSubsetPair :=
+  fun I J => match isSubsetPair_or_not I J with
+  | Sum.inl ss  => Decidable.isTrue ss
+  | Sum.inr nss => Decidable.isFalse nss
 
 end DirSet
 
